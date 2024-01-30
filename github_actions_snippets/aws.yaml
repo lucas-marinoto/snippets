@@ -1,0 +1,20 @@
+name: Baixar arquivo do S3
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Baixar arquivo do S3
+      run: |
+        aws s3 cp s3://<bucket_name>/<file_name> <file_name> --no-sign-request
+    - name: Executar script Python
+      run: |
+        python3 <script_name>.py <repository_name>
+    - name: Subir arquivo para o S3
+      run: |
+        aws s3 cp <file_name> s3://<bucket_name>/<file_name> --no-sign-request
