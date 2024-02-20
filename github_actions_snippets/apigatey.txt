@@ -1,0 +1,27 @@
+#if($input.path('$.name').isEmpty())
+    #set($errorMessage = "Bad request: Missing 'name' field")
+    $input.path('$')
+#else
+    #set($errorMessage = "")
+    $input.path('$')
+#end
+
+
+#if($errorMessage.isEmpty())
+    #set($context.responseOverride.status = 200)
+#else
+    #set($context.responseOverride.status = 400)
+#end
+
+
+#if($context.responseOverride.status == 200)
+{
+    "statusCode": 200,
+    "message": "Mock response: Success"
+}
+#else
+{
+    "statusCode": 400,
+    "message": "$errorMessage"
+}
+#end
