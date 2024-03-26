@@ -4,30 +4,32 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                // Your build steps here
+                // Seus passos de construção aqui
             }
         }
         stage('Update Jira') {
             steps {
                 script {
                     def commitMessage = sh(returnStdout: true, script: 'git log --format=%B -n 1').trim()
-                    def jiraIssueKey = commitMessage =~ /PROJECT-\d+/ // Adjust regex as per your project's issue key pattern
+                    def jiraIssueKey = commitMessage =~ /[A-Z0-9]+-\d+/ // Expressão regular atualizada
                     if (jiraIssueKey) {
                         def issueKey = jiraIssueKey[0]
                         echo "Found Jira issue key: $issueKey"
                         def jiraUrl = "https://your-jira-instance.com/rest/api/2/issue/$issueKey/transitions"
-                        def authToken = "YourJiraAPIToken"
                         def newStatusId = "YOUR_NEW_STATUS_ID"
                         def comment = "Automated comment added by Jenkins pipeline."
                         
-                        // Update issue status
-                        sh "curl -X POST -H 'Content-Type: application/json' -H 'Authorization: Basic $authToken' -d '{\"transition\": {\"id\": \"$newStatusId\"}}' $jiraUrl"
-                        
-                        // Add comment
-                        def commentUrl = "https://your-jira-instance.com/rest/api/2/issue/$issueKey/comment"
-                        sh "curl -X POST -H 'Content-Type: application/json' -H 'Authorization: Basic $authToken' -d '{\"body\": \"$comment\"}' $commentUrl"
+                        // Usando WithCredentials para acessar o token de autenticação seguro
+                        withCredentials([string(credentialsId: 'YOUR_CREDENTIAL_ID', variable: 'JIRA_TOKEN')]) {
+                            // Atualiza o status do problema
+                            sh "curl -X POST -H 'Content-Type: application/json' -H 'Authorization: Basic $JIRA_TOKEN' -d '{\"transition\": {\"id\": \"$newStatusId\"}}' $jiraUrl"
+                            
+                            // Adiciona comentário
+                            def commentUrl = "https://your-jira-instance.com/rest/api/2/issue/$issueKey/comment"
+                            sh "curl -X POST -H 'Content-Type: application/json' -H 'Authorization: Basic $JIRA_TOKEN' -d '{\"body\": \"$comment\"}' $commentUrl"
+                        }
                     } else {
-                        echo "No Jira issue key found in the commit message."
+                        echo "Nenhum ID do Jira encontrado na mensagem do commit."
                     }
                 }
             }
