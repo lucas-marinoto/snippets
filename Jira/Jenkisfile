@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                // Your build steps here
+            }
+        }
+        stage('Update Jira') {
+            steps {
+                script {
+                    def commitMessage = sh(returnStdout: true, script: 'git log --format=%B -n 1').trim()
+                    def jiraIssueKey = commitMessage =~ /PROJECT-\d+/ // Adjust regex as per your project's issue key pattern
+                    if (jiraIssueKey) {
+                        def issueKey = jiraIssueKey[0]
+                        echo "Found Jira issue key: $issueKey"
+                        def jiraUrl = "https://your-jira-instance.com/rest/api/2/issue/$issueKey/transitions"
+                        def authToken = "YourJiraAPIToken"
+                        def newStatusId = "YOUR_NEW_STATUS_ID"
+                        def comment = "Automated comment added by Jenkins pipeline."
+                        
+                        // Update issue status
+                        sh "curl -X POST -H 'Content-Type: application/json' -H 'Authorization: Basic $authToken' -d '{\"transition\": {\"id\": \"$newStatusId\"}}' $jiraUrl"
+                        
+                        // Add comment
+                        def commentUrl = "https://your-jira-instance.com/rest/api/2/issue/$issueKey/comment"
+                        sh "curl -X POST -H 'Content-Type: application/json' -H 'Authorization: Basic $authToken' -d '{\"body\": \"$comment\"}' $commentUrl"
+                    } else {
+                        echo "No Jira issue key found in the commit message."
+                    }
+                }
+            }
+        }
+    }
+}
