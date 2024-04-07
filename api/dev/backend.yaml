@@ -1,5 +1,5 @@
 - backend:
-  https://backend1.com
+  https://backend2.com
 
 apis:
   - users
