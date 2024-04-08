@@ -11,5 +11,5 @@ apis:
     repository_git: https://git.com/repo-api-3
 
   - name: api-4
-    private_api: true
+    private_api: false
     repository_git: https://git.com/repo-api-3
