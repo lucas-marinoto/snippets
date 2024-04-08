@@ -5,11 +5,9 @@ apis:
   - name: api-2
     private_api: false
     repository_git: https://git.com/repo-api-2
-
   - name: api-3
-    private_api: truefalse
+    private_api: true
     repository_git: https://git.com/repo-api-3
-
   - name: api-4
     private_api: false
     repository_git: https://git.com/repo-api-3
