@@ -1,7 +1,0 @@
-- backend:
-  https://backend2.com
-
-apis:
-  - name: api-2
-    private_api: true
-    repository_git: https://git.com/repo-api-1
