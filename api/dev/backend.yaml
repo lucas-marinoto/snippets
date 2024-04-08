@@ -2,10 +2,6 @@
   https://backend2.com
 
 apis:
-  - users
-
-  - accounts
-
-  - lmm
-
-  - teste1
+  - name: api-1
+    private_api: true
+    repository_git: https://git.com/repo-api-1
