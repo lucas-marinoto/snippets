@@ -7,5 +7,5 @@ apis:
     repository_git: https://git.com/repo-api-2
 
   - name: api-3
-    private_api: false
+    private_api: true
     repository_git: https://git.com/repo-api-3
