@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  DevToolsAccountId:
+    Type: String
+    Description: ID da conta DevTools
+    Default: 113815276808
+  SourceBucket:
+    Type: String
+    Default: cfn-templates-devops-lupa-2
+  DestinationBucket:
+    Type: String
+    Default: cfn-templates-devops-lupa-2
+  SourceObjectKey:
+    Type: String
+    Default: lambda/lambda_code.zip
+  ArtifactBucket:
+    Type: String
+    Default: cfn-templates-devops-lupa-2
+  BuildProjectName:
+    Type: String
+    Default: codebuild-build-lambda
+  DeployProjectName:
+    Type: String
+    Default: codebuild-deploy-lambda-mesma-conta
+  CrossAccountRoleArn:
+    Type: String
+    Default: arn:aws:iam::211125702121:role/CrossAccountDeployRole
+  ApplicationName:
+    Type: String
+    Default: Lambda_Teste_App
+
+Resources:
+  MyPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !Sub arn:aws:iam::${DevToolsAccountId}:role/codepipeline-role
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                S3Bucket: !Ref SourceBucket
+                S3ObjectKey: !Ref SourceObjectKey
+              OutputArtifacts:
+                - Name: SourceOutput
+              Namespace: SourceNamespace
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref BuildProjectName
+                EnvironmentVariables: !Sub |
+                  [
+                    {
+                      "name": "S3_DESTINATION_BUCKET",
+                      "type": "PLAINTEXT",
+                      "value": "${DestinationBucket}"
+                    },
+                    {
+                      "name": "APPLICATION_NAME",
+                      "type": "PLAINTEXT",
+                      "value": "${ApplicationName}"
+                    }
+                  ]
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Namespace: BuildOutputNamespace
+        - Name: Deploy
+          Actions:
+            - Name: DeployAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref DeployProjectName
+                EnvironmentVariables:  |
+                  [
+                    {
+                      "name": "S3_VERSION_ID",
+                      "type": "PLAINTEXT",
+                      "value": "#{BuildOutputNamespace.S3_VERSION_ID}"
+                    },
+                    {
+                      "name": "BUILD_S3_KEY",
+                      "type": "PLAINTEXT",
+                      "value": "#{BuildOutputNamespace.S3_KEY}"
+                    }
+                  ]
+              InputArtifacts:
+                - Name: BuildOutput
+
+Outputs:
+  PipelineId:
+    Value: !Ref MyPipeline
+    Export:
+      Name: PipelineId

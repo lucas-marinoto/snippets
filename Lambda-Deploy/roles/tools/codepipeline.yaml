@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  CodePipelineRoleName:
+    Type: String
+    Description: Nome da role IAM para o CodePipeline
+    Default: codepipeline-role
+  CrossAccountRoleArn:
+    Type: String
+    Default: arn:aws:iam::211125702121:role/CrossAccountDeployRole
+
+Resources:
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref CodePipelineRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                  - codebuild:StopBuild
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                  - s3:GetObjectVersion
+                  - s3:GetBucketAcl
+                  - iam:PassRole
+                  - lambda:InvokeFunction
+                  - lambda:ListFunctions
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: !Ref CrossAccountRoleArn
+Outputs:
+  CodePipelineRoleArn:
+    Value: !GetAtt CodePipelineRole.Arn
+    Export:
+      Name: CodePipelineRoleArn

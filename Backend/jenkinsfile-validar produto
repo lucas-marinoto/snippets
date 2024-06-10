@@ -1,0 +1,137 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout do Repositório') {
+            steps {
+                // Checkout do repositório e mudança para a branch main
+                checkout([$class: 'GitSCM', branches: [[name: '*/main']], userRemoteConfigs: [[url: 'https://github.com/lucas-marinoto/snippets.git']]])
+            }
+        }
+
+        stage('Obter nome da branch do pull request') {
+            steps {
+                script {
+                    // Obtém a mensagem do commit de merge
+                    def mergeMessage = sh(script: "git log --merges --first-parent -1 --pretty=%B", returnStdout: true).trim()
+                    echo "Mensagem do commit de merge: ${mergeMessage}"
+
+                    // Verifica se a mensagem do commit de merge contém a string 'Merge pull request'
+                    if (mergeMessage.contains('Merge pull request')) {
+                        def parts = mergeMessage.split(' ')
+                        def pullRequestNumber = parts[3]
+                        def branchName = parts[5]
+                        echo "Número do pull request: ${pullRequestNumber}"
+                        echo "Nome da branch mesclada: ${branchName}"
+                        env.PULL_REQUEST_NUMBER = pullRequestNumber
+                        env.MERGED_BRANCH_NAME = branchName
+                    }
+                    // Verifica se a mensagem do commit de merge contém a string 'Merge branch'
+                    else if (mergeMessage.contains('Merge branch')) {
+                        def parts = mergeMessage.split('\'')
+                        def branchName = parts[1]
+                        echo "Nome da branch mesclada: ${branchName}"
+                        env.MERGED_BRANCH_NAME = branchName
+                    }
+                    // Caso contrário, mensagem não reconhecida
+                    else {
+                        error "Mensagem de merge não reconhecida"
+                    }
+                }
+            }
+        }
+
+        stage('Encontrar commit do pull request anterior') {
+            steps {
+                script {
+                    // Fetch para garantir que todas as referências remotas estejam atualizadas
+                    sh 'git fetch'
+                    
+                    // Encontra o commit associado ao pull request anterior ao último mesclado na branch main
+                    def mergeCommits = sh(script: "git log --merges --first-parent --grep='Merge pull request' origin/main", returnStdout: true).trim().split('\n')
+                    
+                    if (mergeCommits.size() > 1) {
+                        def previousPullRequestCommit = mergeCommits[1].split(' ')[1]
+                        echo "Commit do pull request anterior: ${previousPullRequestCommit}"
+                        env.PREVIOUS_PULL_REQUEST_COMMIT = previousPullRequestCommit
+                    } else {
+                        echo "Não há commits associados ao pull request anterior na branch main."
+                        currentBuild.result = 'ABORTED'
+                        error "Não foi possível encontrar o commit do pull request anterior."
+                    }
+                }
+            }
+        }
+
+        stage('Exibir alterações') {
+            steps {
+                script {
+                    // Usa git diff para mostrar as alterações entre o commit anterior e HEAD da branch feature
+                    def diffOutput = sh(script: "git diff --name-only ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD", returnStdout: true).trim()
+                    echo "Alterações desde o pull request anterior:"
+                    echo "${diffOutput}"
+                }
+            }
+        }
+
+        stage('Exibir mudanças em arquivos YAML') {
+            steps {
+                script {
+                    // Encontra todos os arquivos YAML no diretório e subdiretórios
+                    echo "Listando arquivos YAML:"
+                    def yamlFiles = sh(script: "find Backend/ -type f -name '*.yaml'", returnStdout: true).trim().split('\n')
+                    echo yamlFiles.join('\n')
+
+                    yamlFiles.each { yamlFile ->
+                        echo "Analisando o arquivo: ${yamlFile}"
+                        
+                        // Verifica se há mudanças no arquivo antes de analisá-lo
+                        def diffOutput = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD ${yamlFile} | grep -v '^@@' || true", returnStdout: true).trim()
+                        echo "diffOutput Status: ${diffOutput}"
+
+                        if (!diffOutput) {
+                            // Se não houver mudanças, não faz nada e passa para o próximo arquivo
+                            echo "Nenhuma alteração detectada no arquivo ${yamlFile}."
+                            return
+                        }
+                        
+                        // Se houver mudanças, continua com a análise do diff
+                        echo "Diff output para ${yamlFile}:"
+                        // def diffOutputContent = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD ${yamlFile} | grep -v '^@@' || true", returnStdout: true).trim()
+                        echo "Diff output para ${diffOutput}:"
+
+                        // Verifica se há um bloco com '- name:' no diff
+                        if (diffOutput.contains('- name:')) {
+                            // Divide o output em linhas
+                            def diffLines = diffOutput.split('\n')
+                            echo "diffLines:  ${diffLines}"
+
+                            // Itera sobre as linhas do output
+                            diffLines.each { line ->
+                                echo "line:  ${line}"
+                                // Verifica se a linha começa com '- name:'
+                                if (line.contains('- name:')) {
+                                    // Extrai o valor do '- name'
+                                    // nameValue = line.split(':')[1].trim()
+                                    def match = line =~ /- name: (.*)$/
+                                    echo "match:  ${match}"
+                                    def extractedValue = match[0][1]
+                                    println "Valor extraído: ${extractedValue}"
+                                    // nameValue = line
+                                }
+                                // Se o valor do '- name' foi encontrado, exibe a mensagem
+                                if (extractedValue) {
+                                    echo "Alteração detectada no bloco com '- name: ${extractedValue}' no arquivo ${yamlFile}."
+                                } else {
+                                    echo "Nenhuma alteração detectada no bloco com '- name:' no arquivo ${yamlFile}."
+                                }                               
+                            }                            
+                        } else {
+                            echo "Não foi encontrado um bloco com '- name:' no arquivo ${yamlFile}."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

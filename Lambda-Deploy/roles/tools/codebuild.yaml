@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Role for CodeBuild to deploy CloudFormation templates
+
+Resources:
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: codebuild-deploy-lambda
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CodeBuildActions
+                Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                  - codebuild:StopBuild
+                  - codebuild:RetryBuild
+                  - codebuild:BatchGetProjects
+                  - codebuild:BatchGetReportGroups
+                  - codebuild:BatchGetReports
+                  - codebuild:CreateReportGroup
+                  - codebuild:UpdateReportGroup
+                  - codebuild:DeleteReportGroup
+                  - codebuild:ListBuilds
+                  - codebuild:ListBuildsForProject
+                  - codebuild:ListCuratedEnvironmentImages
+                  - codebuild:ListProjects
+                  - codebuild:ListReportGroups
+                  - codebuild:ListReports
+                  - codebuild:ListReportsForReportGroup
+                  - codebuild:ListSharedProjects
+                  - codebuild:ListSharedReportGroups
+                  - codebuild:UpdateProject
+                Resource: "*"
+              - Sid: CloudWatchLogsActions
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:GetLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:DescribeLogGroups
+                Resource: "*"
+              - Sid: S3Actions
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource: "*"
+              - Sid: CloudFormationActions
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplate
+                  - cloudformation:ValidateTemplate
+                Resource: "*"
+              - Sid: AssumeRoleActions
+                Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: "arn:aws:iam::211125702121:role/CrossAccountDeployRole"
+
+Outputs:
+  CodeBuildRoleArn:
+    Description: "The ARN of the CodeBuild Role"
+    Value: !GetAtt CodeBuildRole.Arn
+  CodeBuildRoleName:
+    Description: "The Name of the CodeBuild Role"
+    Value: !Ref CodeBuildRole

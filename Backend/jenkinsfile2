@@ -1,0 +1,176 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout do Repositório') {
+            steps {
+                // Checkout do repositório e mudança para a branch main
+                checkout([$class: 'GitSCM', branches: [[name: '*/main']], userRemoteConfigs: [[url: 'https://github.com/lucas-marinoto/snippets.git']]])
+            }
+        }
+
+        stage('Obter nome da branch do pull request') {
+            steps {
+                script {
+                    // Obtém a mensagem do commit de merge
+                    def mergeMessage = sh(script: "git log --merges --first-parent -1 --pretty=%B", returnStdout: true).trim()
+                    echo "Mensagem do commit de merge: ${mergeMessage}"
+
+                    // Verifica se a mensagem do commit de merge contém a string 'Merge pull request'
+                    if (mergeMessage.contains('Merge pull request')) {
+                        def parts = mergeMessage.split(' ')
+                        def pullRequestNumber = parts[3]
+                        def branchName = parts[5]
+                        echo "Número do pull request: ${pullRequestNumber}"
+                        echo "Nome da branch mesclada: ${branchName}"
+                        env.PULL_REQUEST_NUMBER = pullRequestNumber
+                        env.MERGED_BRANCH_NAME = branchName
+                    }
+                    // Verifica se a mensagem do commit de merge contém a string 'Merge branch'
+                    else if (mergeMessage.contains('Merge branch')) {
+                        def parts = mergeMessage.split('\'')
+                        def branchName = parts[1]
+                        echo "Nome da branch mesclada: ${branchName}"
+                        env.MERGED_BRANCH_NAME = branchName
+                    }
+                    // Caso contrário, mensagem não reconhecida
+                    else {
+                        error "Mensagem de merge não reconhecida"
+                    }
+                }
+            }
+        }
+
+        stage('Encontrar commit do pull request anterior') {
+            steps {
+                script {
+                    // Fetch para garantir que todas as referências remotas estejam atualizadas
+                    sh 'git fetch'
+                    
+                    // Encontra o commit associado ao pull request anterior ao último mesclado na branch main
+                    def mergeCommits = sh(script: "git log --merges --first-parent --grep='Merge pull request' origin/main", returnStdout: true).trim().split('\n')
+                    
+                    if (mergeCommits.size() > 1) {
+                        def previousPullRequestCommit = mergeCommits[1].split(' ')[1]
+                        echo "Commit do pull request anterior: ${previousPullRequestCommit}"
+                        env.PREVIOUS_PULL_REQUEST_COMMIT = previousPullRequestCommit
+                    } else {
+                        echo "Não há commits associados ao pull request anterior na branch main."
+                        currentBuild.result = 'ABORTED'
+                        error "Não foi possível encontrar o commit do pull request anterior."
+                    }
+                }
+            }
+        }
+
+        stage('Exibir alterações') {
+            steps {
+                script {
+                    // Usa git diff para mostrar as alterações entre o commit anterior e HEAD da branch feature
+                    def diffOutput = sh(script: "git diff --name-only ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD", returnStdout: true).trim()
+                    echo "Alterações desde o pull request anterior:"
+                    echo "${diffOutput}"
+                }
+            }
+        }
+
+        stage('Exibir mudanças em arquivos modificados') {
+            steps {
+                script {
+                    // Divide a saída do git diff em linhas
+                    def diffLines = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD", returnStdout: true).trim().split('\n')
+
+                    // Variável para armazenar o nome do arquivo atual
+                    def currentFile = ''
+
+                    // Loop através de cada linha do git diff
+                    for (def line : diffLines) {
+                        // Verifica se a linha começa com 'diff --git'
+                        if (line.startsWith('diff --git')) {
+                            // Extrai o nome do arquivo
+                            currentFile = line.tokenize(' ')[-1]
+                            echo "Arquivo: ${currentFile}"
+                        }
+                        // Verifica se a linha começa com '+', indicando uma adição
+                        else if (line.startsWith('+')) {
+                            echo "Adição: ${line.substring(1)}"
+                        }
+                        // Verifica se a linha começa com '-', indicando uma remoção
+                        else if (line.startsWith('-')) {
+                            echo "Remoção: ${line.substring(1)}"
+                        }
+                        // Verifica se a linha começa com ' ', indicando uma linha inalterada
+                        else if (line.startsWith(' ')) {
+                            // Não faz nada
+                        }
+                        // Caso contrário, trata-se de uma linha de cabeçalho ou outro tipo de linha no diff
+                        else {
+                            // Não faz nada
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Exibir mudanças em arquivos YAML') {
+            steps {
+                script {
+                    // Encontra todos os arquivos YAML no diretório e subdiretórios
+                    echo "Listando arquivos YAML:"
+                    def yamlFiles = sh(script: "find Backend/ -type f -name '*.yaml'", returnStdout: true).trim().split('\n')
+                    echo yamlFiles.join('\n')
+
+                    yamlFiles.each { yamlFile ->
+                        echo "Analisando o arquivo: ${yamlFile}"
+                        def diffOutput = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD ${yamlFile} grep -A 4 '^@@' | grep -v '^@@'", returnStdout: true).trim()
+                        echo "Diff output para ${yamlFile}:"
+                        echo "${diffOutput}"
+
+                        // Verifica se há alterações no arquivo
+                        if (diffOutput) {
+                            // Dividir as linhas do output do git diff
+                            echo('Entrou no if diffOutput')
+                            def diffLines = diffOutput.split('\n')
+                            echo "diffLines ${diffLines}:"
+
+                            // Variável para armazenar o nome da API
+                            def apiName = ''
+
+                            // Iterar sobre as linhas do output do git diff
+                            diffLines.each { line ->
+                                echo "line ${line}:"
+                                // Verificar se a linha começa com um sinal de adição (+)
+                                if (line.startsWith('+') || line.startsWith('-') || line.contains('- name')) {
+                                    // Extrair o valor após o sinal de adição (+)
+                                    echo "Entrou no if de line"
+                                    def value = line.substring(1).trim()
+                                    echo "value ${value}:"
+
+                                    // Verificar se o valor corresponde ao início do campo 'name'
+                                    if (value.contains('- name:')) {
+                                        // Extrair o valor do campo 'name'
+                                        apiName = value.substring(7).trim()
+                                        echo "apiName ${apiName}:"
+                                    }
+                                    // Verificar se o valor corresponde ao campo 'private_api'
+                                    else if (value.contains('- private_api:')) {
+                                        echo "private_api elseif:"
+                                        // Se o campo 'private_api' for 'true', significa que a API é privada
+                                        if (value.endsWith('true')) {
+                                            echo "Alteração detectada: A API ${apiName} foi marcada como privada."
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            echo "Nenhuma alteração detectada no arquivo ${yamlFile}."
+                        }
+                    }
+                }
+            }
+        }
+
+        // Outros estágios aqui...
+
+    }
+}

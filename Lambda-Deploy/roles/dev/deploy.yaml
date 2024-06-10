@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  LambdaDeployRoleName:
+    Type: String
+    Default: LambdaDeployRole
+
+Resources:
+  LambdaDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref LambdaDeployRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:*
+                  - lambda:*
+                  - iam:PassRole
+                Resource: "*"
+Outputs:
+  LambdaDeployRoleArn:
+    Value: !GetAtt LambdaDeployRole.Arn
+    Export:
+      Name: LambdaDeployRoleArn

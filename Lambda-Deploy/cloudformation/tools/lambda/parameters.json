@@ -1,0 +1,7 @@
+[
+    "LambdaFunctionName=MyHelloWorldLambda",
+    "S3BucketName=SOURCE_BUCKET_NAME",
+    "S3Key=S3KEY",
+    "LambdaRoleArn=arn:aws:iam::113815276808:role/LambdaExecutionRole-DevOps",
+    "S3VersionId=$S3_VERSION_ID"
+]

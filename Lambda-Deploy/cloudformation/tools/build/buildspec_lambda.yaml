@@ -1,0 +1,36 @@
+version: 0.2
+
+env:
+  exported-variables:
+    - S3_VERSION_ID
+    - S3_KEY
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+    commands:
+      - ls -la
+      - npm install
+  build:
+    commands:
+      - ls -la
+      - echo "APPLICATION NAME:" $APPLICATION_NAME
+      - zip -r lambda-${APPLICATION_NAME}.zip . -x template.yaml -x parameters.json
+      - echo $CODEBUILD_SOURCE_VERSION
+      # - SOURCE_BUCKET_NAME=$(echo $CODEBUILD_SOURCE_VERSION | awk -F'[:/]' '{print $6}')
+      - echo "ARTEFACT OBJECT:" $CODEBUILD_SOURCE_VERSION
+      - echo "DESTINATION BUCKET:" $S3_DESTINATION_BUCKET
+      - S3_KEY="lambda/destination/lambda-${APPLICATION_NAME}.zip"
+      - echo "S3 KEY:" $S3_KEY
+      - aws s3 cp lambda-${APPLICATION_NAME}.zip s3://$S3_DESTINATION_BUCKET/$S3_KEY
+      - echo "File uploaded to S3"
+      - S3_VERSION_ID=$(aws s3api list-object-versions --bucket $S3_DESTINATION_BUCKET --prefix $S3_KEY --query 'Versions[?IsLatest].VersionId' --output text)
+      - echo "S3 Version ID:" $S3_VERSION_ID
+      - echo "ARTEFACT OBJECT:" $CODEBUILD_SOURCE_VERSION
+      - ls -la
+
+artifacts:
+  files:
+    - template.yaml
+    - parameters.json
