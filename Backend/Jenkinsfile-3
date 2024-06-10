@@ -87,7 +87,7 @@ pipeline {
                         
                         // Verifica se há mudanças no arquivo antes de analisá-lo
                         def diffOutput = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD ${yamlFile} | grep -v '^@@' || true", returnStdout: true).trim()
-                        echo "diffOutput Status: ${diffOutput}"
+                        echo "diffOutput: ${diffOutput}"
 
                         if (!diffOutput) {
                             // Se não houver mudanças, não faz nada e passa para o próximo arquivo
@@ -98,34 +98,43 @@ pipeline {
                         // Se houver mudanças, continua com a análise do diff
                         echo "Diff output para ${yamlFile}:"
                         // def diffOutputContent = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD ${yamlFile} | grep -v '^@@' || true", returnStdout: true).trim()
-                        echo "Diff output para ${diffOutput}:"
+                        echo "Diff output para ${diffOutput}"
 
                         // Verifica se há um bloco com '- name:' no diff
                         if (diffOutput.contains('- name:')) {
                             // Divide o output em linhas
-                            def diffLines = diffOutput.split('\n')
+                            def diffLines = diffOutputContent.split('\n')
                             echo "diffLines:  ${diffLines}"
 
                             // Itera sobre as linhas do output
                             diffLines.each { line ->
-                                echo "line:  ${line}"
+                                echo "line_output:  ${line}"
                                 // Verifica se a linha começa com '- name:'
                                 if (line.contains('- name:')) {
+                                    echo "entrou no contain name"
+                                    api = line.split(':')[1].trim()
+                                    def match = line =~ /- name: (.*)$/
+                                    def api_name = 
+                                }
+                                if (line.startsWith('- ') || line.startsWith('+ ')) {
+                                    echo "entrou no starts with"
                                     // Extrai o valor do '- name'
-                                    // nameValue = line.split(':')[1].trim()
+                                    api = line.split(':')[1].trim()
                                     def match = line =~ /- name: (.*)$/
                                     echo "match:  ${match}"
-                                    def extractedValue = match[0][1]
-                                    println "Valor extraído: ${extractedValue}"
+                                    if (match) {
+                                            // Se a expressão regular corresponder, obter o valor do campo 'name'
+                                        extractedName = match[0][1] ?: match[0][2]
+                                        println "Valor extraído: ${extractedName}"
+                                    }
+                                    // def extractedValue = match[0][1]
+                                    // println "Valor extraído: ${extractedValue}"
                                     // nameValue = line
-                                }
-                                // Se o valor do '- name' foi encontrado, exibe a mensagem
-                                if (extractedValue) {
-                                    echo "Alteração detectada no bloco com '- name: ${extractedValue}' no arquivo ${yamlFile}."
                                 } else {
-                                    echo "Nenhuma alteração detectada no bloco com '- name:' no arquivo ${yamlFile}."
-                                }                               
-                            }                            
+                                    echo "Valor line else: ${line}"
+                                }
+                                
+                            }
                         } else {
                             echo "Não foi encontrado um bloco com '- name:' no arquivo ${yamlFile}."
                         }

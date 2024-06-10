@@ -123,7 +123,6 @@ pipeline {
                     yamlFiles.each { yamlFile ->
                         echo "Analisando o arquivo: ${yamlFile}"
                         def diffOutput = sh(script: "git diff ${env.PREVIOUS_PULL_REQUEST_COMMIT} HEAD ${yamlFile} grep -A 4 '^@@' | grep -v '^@@'", returnStdout: true).trim()
-                        
                         echo "Diff output para ${yamlFile}:"
                         echo "${diffOutput}"
 

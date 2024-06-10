@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  BuildProjectName:
+    Type: String
+    Default: codebuild-build-lambda
+  CodeBuildRoleArn:
+    Type: String
+    Default: arn:aws:iam::113815276808:role/CodeBuildRole
+  S3BucketName:
+    Type: String
+    Default: cfn-templates-devops-lupa-2
+
+Resources:
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref BuildProjectName
+      ServiceRole: !Ref CodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        Type: LINUX_CONTAINER
+      Source:
+        Type: CODEPIPELINE
+      Cache:
+        Type: NO_CACHE
+      Description: "Build project for Lambda function with axios"
+      TimeoutInMinutes: 30
+Outputs:
+  BuildProjectArn:
+    Value: !GetAtt BuildProject.Arn
+    Export:
+      Name: BuildProjectArn
