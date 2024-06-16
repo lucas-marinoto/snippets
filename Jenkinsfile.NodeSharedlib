@@ -1,8 +1,7 @@
 // Jenkinsfile na raiz da sua aplicação
 
 // Importa a função da Shared Library
-@Library('nome-da-sua-shared-library') _
-import nodejsPipeline
+library 'shared-lib'
 
 pipeline {
     agent any

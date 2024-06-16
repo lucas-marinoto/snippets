@@ -1,7 +1,6 @@
 // Jenkinsfile na raiz da sua aplicação
 
-@Library('nome-da-sua-shared-library') _
-import pythonPipeline
+library 'shared-lib'
 
 pipeline {
     agent any
