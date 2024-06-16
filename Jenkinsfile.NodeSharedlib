@@ -1,0 +1,43 @@
+// Jenkinsfile na raiz da sua aplicação
+
+// Importa a função da Shared Library
+@Library('nome-da-sua-shared-library') _
+import nodejsPipeline
+
+pipeline {
+    agent any
+
+    environment {
+        CI = 'true'
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    // Chamada para executar npm install dentro do Docker
+                    nodejsPipeline('node:lts-buster-slim', 'npm install')
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    // Chamada para executar test.sh dentro do Docker
+                    nodejsPipeline('node:lts-buster-slim', './jenkins/scripts/test.sh')
+                }
+            }
+        }
+        stage('Deliver') {
+            steps {
+                script {
+                    // Chamada para executar deliver.sh dentro do Docker
+                    nodejsPipeline('node:lts-buster-slim', './jenkins/scripts/deliver.sh')
+                    input message: 'Finished using the web site? (Click "Proceed" to continue)'
+                    // Chamada para executar kill.sh dentro do Docker
+                    nodejsPipeline('node:lts-buster-slim', './jenkins/scripts/kill.sh')
+                }
+            }
+        }
+    }
+}
