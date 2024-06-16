@@ -1,0 +1,19 @@
+// Jenkinsfile na raiz da sua aplicação
+
+@Library('nome-da-sua-shared-library') _
+import pythonPipeline
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Run Python Script') {
+            steps {
+                script {
+                    // Chamada para executar o script Python dentro do Docker
+                    pythonPipeline('python:3.9-slim', 'resources/scripts/example.py')
+                }
+            }
+        }
+    }
+}
