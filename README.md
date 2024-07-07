@@ -53,6 +53,34 @@ sequenceDiagram
     Script ->> User: API setup complete
 ```
 
+Digrama de Fluxo
+```mermaid
+graph TD
+    A[Start] --> B[Read spec-output.yaml]
+    B --> C[Get AWS client using profile]
+    C --> D{API exists?}
+    D -->|Yes| E[Backup API state]
+    D -->|No| G[Create new API]
+    E --> F[Update API]
+    G --> H{Private API?}
+    F --> H{Private API?}
+    H -->|Yes| I[Configure private API with VPC endpoint and policy]
+    H -->|No| J[Configure regional API]
+    I --> K[Disable default endpoint]
+    J --> K[Disable default endpoint]
+    K --> L[Deploy API to stage with variables]
+    L --> M[Add tags to API]
+    M --> N[Associate custom domain with base path]
+    N --> O{Base path exists for another API?}
+    O -->|Yes| P[Error: Base path already exists]
+    O -->|No| Q[Base path mapping exists for this API?]
+    Q -->|Yes| R[Leave as is]
+    Q -->|No| S[Create base path mapping]
+    P --> T[End]
+    R --> T[End]
+    S --> T[End]
+```
+
 Diagrama de Caso de uso
 ```mermaid
 graph TD;
