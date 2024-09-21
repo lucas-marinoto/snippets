@@ -1,0 +1,54 @@
+# Defina variáveis
+APP_ID="1000327"
+PRIVATE_KEY_PATH="C:/Users/lucas/Downloads/private-key.pem"
+
+# Gerar JWT
+HEADER=$(echo -n '{"alg":"RS256","typ":"JWT"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+PAYLOAD=$(echo -n '{"iat":'$(date +%s)',"exp":'$(($(date +%s)+600))',"iss":"'"$APP_ID"'"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+SIGNATURE=$(echo -n "$HEADER.$PAYLOAD" | openssl dgst -sha256 -sign "$PRIVATE_KEY_PATH" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+JWT="$HEADER.$PAYLOAD.$SIGNATURE"
+
+# Exibir JWT
+echo "JWT: $JWT"
+
+# Obter Installation ID
+INSTALLATION_ID_RESPONSE=$(curl -s -X GET -H "Authorization: Bearer $JWT" \
+-H "Accept: application/vnd.github.v3+json" \
+https://api.github.com/app/installations)
+
+echo "Installation ID Response: $INSTALLATION_ID_RESPONSE"
+
+# Extraia o Installation ID usando jq
+INSTALLATION_ID=$(echo "$INSTALLATION_ID_RESPONSE" | jq -r '.[0].id')
+
+if [ -z "$INSTALLATION_ID" ]; then
+  echo "Não foi possível extrair o Installation ID."
+  exit 1
+fi
+
+# Exibir Installation ID
+echo "Installation ID: $INSTALLATION_ID"
+
+# Verificar URL para Token de Instalação
+TOKEN_URL="https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens"
+echo "Token URL: $TOKEN_URL"
+
+# Obter Token de Instalação
+TOKEN_RESPONSE=$(curl -s -X POST -H "Authorization: Bearer $JWT" \
+-H "Accept: application/vnd.github.v3+json" \
+"$TOKEN_URL")
+
+echo "Token Response: $TOKEN_RESPONSE"
+
+# Extraia o Token de Instalação usando jq
+TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
+
+# Exibir Token de Instalação
+if [ -z "$TOKEN" ]; then
+  echo "Não foi possível extrair o Access Token."
+else
+  echo "Access Token: $TOKEN"
+fi
+
+
+git push https://x-access-token:$TOKEN$TOKEN@github.com/lucas-marinoto/selenium-grid-aws-codebuild.git
