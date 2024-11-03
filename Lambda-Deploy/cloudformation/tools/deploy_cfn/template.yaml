@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  DeployProjectName:
+    Type: String
+    Default: codebuild-deploy-lambda-mesma-conta
+  LambdaDeployRoleArn:
+    Type: String
+    Default: arn:aws:iam::113815276808:role/codebuild-deploy-lambda-mesma-conta
+  DeploymentBucket:
+    Type: String
+    Default: arn:aws:s3:::devops-lupa-codebuild-lambda
+  LambdaFunctionName:
+    Type: String
+    Default: lambda-teste
+  AliasName:
+    Type: String
+    Default: dev-1.0
+
+Resources:
+  DeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref DeployProjectName
+      ServiceRole: !Ref LambdaDeployRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        Type: LINUX_CONTAINER
+      Source:
+        Type: CODEPIPELINE
+      Cache:
+        Type: NO_CACHE
+      Description: "Deploy project for Lambda function"
+      TimeoutInMinutes: 30
+      SourceVersion: "master"
+  

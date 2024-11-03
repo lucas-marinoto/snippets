@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    Description: Nome da função Lambda
+  S3BucketName:
+    Type: String
+    Description: Nome do bucket S3 onde o código da Lambda está armazenado
+  S3Key:
+    Type: String
+    Description: Caminho do código da Lambda no bucket S3
+  LambdaRoleArn:
+    Type: String
+    Description: ARN da role IAM que a função Lambda usará
+  S3VersionId:
+    Type: String
+    Description: Versão do código da Lambda no bucket S3
+
+Resources:
+  HelloWorldLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: !Ref S3Key
+        S3ObjectVersion: !Ref S3VersionId
+      Runtime: nodejs20.x
+      Description: "Hello World Lambda Function with axios"
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          ENV_VAR: "HelloWorld"
+
+Outputs:
+  LambdaFunctionArn:
+    Value: !GetAtt HelloWorldLambdaFunction.Arn
+    Export:
+      Name: LambdaFunctionArn

@@ -1,0 +1,48 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.x
+  build:
+    commands:
+      - echo Deploying CloudFormation template...
+      - ls -la
+      - echo $CODEBUILD_SOURCE_VERSION
+      - |
+        SOURCE_BUCKET_NAME=$(echo $CODEBUILD_SOURCE_VERSION | awk -F'[:/]' '{print $6}')
+        S3_KEY=$BUILD_S3_KEY
+        echo "Bucket Name: $SOURCE_BUCKET_NAME"
+        echo "Key: $S3_KEY"
+      - cat $CODEBUILD_SRC_DIR/parameters.json
+      - sed -i "s@S3KEY@$S3_KEY@g" $CODEBUILD_SRC_DIR/parameters.json
+      - sed -i "s@SOURCE_BUCKET_NAME@$SOURCE_BUCKET_NAME@g" $CODEBUILD_SRC_DIR/parameters.json
+      - sed -i "s@S3_VERSION_ID@$S3_VERSION_ID@g" $CODEBUILD_SRC_DIR/parameters.json
+      - cat $CODEBUILD_SRC_DIR/parameters.json
+      - |
+        output=$(aws cloudformation deploy --template-file template.yaml --stack-name MyLambdaStack --parameter-overrides file://$CODEBUILD_SRC_DIR/parameters.json --capabilities CAPABILITY_NAMED_IAM 2>&1)
+        echo "$output"
+        if echo "$output" | grep -q "No changes to deploy"; then
+          echo "No changes to deploy. Proceeding without error."
+        fi
+      - aws cloudformation describe-stack-events --stack-name MyLambdaStack
+      - PARAMETERS_JSON=$CODEBUILD_SRC_DIR/parameters.json
+      - LAMBDA_FUNCTION_NAME=$(jq -r '.[] | select(test("^LambdaFunctionName=")) | split("=")[1]' $PARAMETERS_JSON)
+      - AliasName=$S3_VERSION_ID
+      - echo "LAMBDA FUNCTION NAME:" $LAMBDA_FUNCTION_NAME
+      - echo "ALIAS NAME:" $AliasName
+      - FUNCTION_VERSION=$(aws lambda publish-version --function-name ${LAMBDA_FUNCTION_NAME} --query 'Version' --output text)
+      - echo "FUNCTION VERSION:" $FUNCTION_VERSION
+      - |
+        alias_exists=$(aws lambda get-alias --function-name ${LAMBDA_FUNCTION_NAME} --name ${AliasName} 2>&1 || true)
+        if echo "$alias_exists" | grep -q "ResourceNotFoundException"; then
+          echo "Alias does not exist. Creating alias..."
+          aws lambda create-alias --function-name ${LAMBDA_FUNCTION_NAME} --name ${AliasName} --function-version $FUNCTION_VERSION
+        else
+          echo "Alias exists. Updating alias..."
+          aws lambda update-alias --function-name ${LAMBDA_FUNCTION_NAME} --name ${AliasName} --function-version $FUNCTION_VERSION
+        fi
+
+artifacts:
+  files:
+    - template.yaml

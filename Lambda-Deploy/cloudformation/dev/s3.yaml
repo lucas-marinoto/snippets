@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Nome do bucket S3 para armazenar o código da Lambda
+
+Resources:
+  LambdaCodeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+
+Outputs:
+  S3BucketArn:
+    Value: !GetAtt LambdaCodeBucket.Arn
+    Export:
+      Name: S3BucketArn
+  S3BucketName:
+    Value: !Ref LambdaCodeBucket
+    Export:
+      Name: S3BucketName

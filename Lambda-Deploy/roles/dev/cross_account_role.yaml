@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Role to be assumed by the origin account to deploy CloudFormation stacks
+
+Resources:
+  CrossAccountDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CrossAccountDeployRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: "arn:aws:iam::113815276808:role/codebuild-deploy-role"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: CrossAccountDeployPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                  - s3:*
+                Resource: "*"

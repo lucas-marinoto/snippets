@@ -1,0 +1,10 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+  build:
+    commands:
+      - aws s3 cp . s3://${DeploymentBucket}/ --recursive
+      - aws lambda update-function-code --function-name ${LambdaFunctionName} --s3-bucket ${DeploymentBucket} --s3-key ${S3Key}
+      - aws lambda update-alias --function-name ${LambdaFunctionName} --name ${AliasName} --function-version $(aws lambda publish-version --function-name ${LambdaFunctionName} --query 'Version' --output text)

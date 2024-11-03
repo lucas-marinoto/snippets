@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Role for CodeBuild to deploy CloudFormation templates with Lambda
+
+Resources:
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: codebuild-deploy-lambda-mesma-conta
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CodeBuildActions
+                Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                  - codebuild:StopBuild
+                  - codebuild:RetryBuild
+                  - codebuild:BatchGetProjects
+                  - codebuild:BatchGetReportGroups
+                  - codebuild:BatchGetReports
+                  - codebuild:CreateReportGroup
+                  - codebuild:UpdateReportGroup
+                  - codebuild:DeleteReportGroup
+                  - codebuild:ListBuilds
+                  - codebuild:ListBuildsForProject
+                  - codebuild:ListCuratedEnvironmentImages
+                  - codebuild:ListProjects
+                  - codebuild:ListReportGroups
+                  - codebuild:ListReports
+                  - codebuild:ListReportsForReportGroup
+                  - codebuild:ListSharedProjects
+                  - codebuild:ListSharedReportGroups
+                  - codebuild:UpdateProject
+                Resource: "*"
+              - Sid: CloudWatchLogsActions
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:GetLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:DescribeLogGroups
+                Resource: "*"
+              - Sid: S3Actions
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource: "*"
+              - Sid: CloudFormationActions
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplate
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:GetTemplateSummary
+                Resource: "*"
+              - Sid: LambdaActions
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:DeleteFunction
+                  - lambda:ListFunctions
+                  - lambda:GetFunction
+                  - lambda:PublishVersion
+                  - lambda:UpdateAlias
+                  - lambda:GetAlias
+                  - lambda:CreateAlias
+                Resource: "*"
+              - Sid: PassRolePermissions
+                Effect: Allow
+                Action: 
+                  - iam:PassRole
+                Resource: arn:aws:iam::113815276808:role/LambdaExecutionRole-DevOps
+
+Outputs:
+  CodeBuildRoleArn:
+    Description: "The ARN of the CodeBuild Role"
+    Value: !GetAtt CodeBuildRole.Arn
+  CodeBuildRoleName:
+    Description: "The Name of the CodeBuild Role"
+    Value: !Ref CodeBuildRole
